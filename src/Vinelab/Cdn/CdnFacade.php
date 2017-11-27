@@ -78,9 +78,32 @@ class CdnFacade implements CdnFacadeInterface
     public function asset($path)
     {
         // if asset always append the public/ dir to the path (since the user should not add public/ to asset)
-        return $this->generateUrl($path, 'public/');
+        return $this->generateUrl($path, '/');
     }
-	
+
+    public function metronic($path)
+    {
+
+      $root = Request::root() . '/';
+      $metronicPath = $this->configurations['metronic_local_path'];
+      if (strpos($metronicPath, 'http') !== false) {
+          $root = '';
+      }
+      if (isset($this->configurations['bypass']) && $this->configurations['bypass']) {
+          return $root . $this->configurations['metronic_local_path'] . '/' . $path;
+      }
+
+      if (!isset($path)) {
+          throw new EmptyPathException('Path does not exist.');
+      }
+
+      $cleanPath = 'metronic/' . $this->configurations['metronic_version'] . '/' . $this->helper->cleanPath($path);
+
+      // call the provider specific url generator
+      return $this->provider->urlGenerator($cleanPath);
+    }
+
+
 	/**
      * this function will be called from the 'views' using the
      * 'Cdn' facade {{Cdn::elixir('')}} to convert the elixir generated file path into
@@ -150,7 +173,9 @@ class CdnFacade implements CdnFacadeInterface
 
         // remove slashes from begging and ending of the path
         // and append directories if needed
-        $clean_path = $prepend.$this->helper->cleanPath($path);
+        $clean_path = $this->helper->getCdnFilePath(
+            $prepend.$this->helper->cleanPath($path)
+        );
 
         // call the provider specific url generator
         return $this->provider->urlGenerator($clean_path);
